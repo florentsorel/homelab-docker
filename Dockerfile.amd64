@@ -43,6 +43,6 @@ COPY --from=builder /tmp/helm /usr/local/bin/helm
 COPY --from=builder /tmp/ytt /usr/local/bin/ytt
 COPY --from=builder /tmp/entrypoint.sh /entrypoint.sh
 
-RUN touch /etc/tracker-tv-do.conf
+RUN touch /etc/homelab.conf
 ENTRYPOINT ["/entrypoint.sh"]
 
