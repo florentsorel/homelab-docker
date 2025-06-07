@@ -1,0 +1,47 @@
+FROM arm64v8/ubuntu:24.04 AS builder
+ARG TALOS_VERSION=v1.10.3
+ARG KUBECTL_VERSION=1.33.0
+ARG HELM_VERSION=v3.18.2
+ARG YTT_VERSION=v0.52.0
+
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y dist-upgrade && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+	curl \
+	git
+
+RUN curl -L -o talosctl https://github.com/siderolabs/talos/releases/download/${TALOS_VERSION}/talosctl-linux-arm64 && \
+	chmod +x talosctl && \
+	mv talosctl /tmp/talosctl
+
+RUN curl -LO https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/arm64/kubectl && \
+	chmod +x kubectl && \
+	mv kubectl /tmp/kubectl
+
+RUN curl -fsSL -o helm.tar.gz https://get.helm.sh/helm-${HELM_VERSION}-linux-arm64.tar.gz && \
+	tar -xf helm.tar.gz && \
+	chmod +x linux-arm64/helm && \
+	mv linux-arm64/helm /tmp/helm
+
+RUN curl -L -o ytt https://github.com/vmware-tanzu/carvel-ytt/releases/download/${YTT_VERSION}/ytt-linux-arm64 && \
+	chmod +x ytt && \
+	mv ytt /tmp/ytt
+
+COPY ./entrypoint.sh /tmp/entrypoint.sh
+RUN chmod +x /tmp/entrypoint.sh
+
+FROM arm64v8/ubuntu:24.04
+
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y dist-upgrade && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+	bash \
+	curl \
+	jq \
+	git \
+	docker.io
+
+COPY --from=builder /tmp/talosctl /usr/local/bin/talosctl
+COPY --from=builder /tmp/kubectl /usr/local/bin/kubectl
+COPY --from=builder /tmp/helm /usr/local/bin/helm
+COPY --from=builder /tmp/ytt /usr/local/bin/ytt
+COPY --from=builder /tmp/entrypoint.sh /entrypoint.sh
+
+RUN touch /etc/tracker-tv-do.conf
+ENTRYPOINT ["/entrypoint.sh"]
